@@ -1,5 +1,4 @@
 "use client";
-
 import Image from "next/image";
 import ScreenLayout from "../layout";
 import styles from "./index.module.scss";
@@ -16,6 +15,7 @@ const Home = () => {
   const [user] = useLocalStorage<UserInfo>("user");
   const { displayName, pfp } = useApp();
   const [text, setText] = useState("");
+  const [followFids, setFollowFids] = useState("");
 
   async function handlePublishCast() {
     const { signerUuid } = user;
@@ -34,6 +34,55 @@ const Home = () => {
         pauseOnHover: true,
       });
       setText("");
+    } catch (err) {
+      const { message } = (err as AxiosError).response?.data as ErrorRes;
+      toast(message, {
+        type: "error",
+        theme: "dark",
+        autoClose: 3000,
+        position: "bottom-right",
+        pauseOnHover: true,
+      });
+    }
+  }
+
+  async function handleFollow() {
+    const { signerUuid } = user;
+    const fidsArray = followFids
+      .split(",")
+      .map((fid) => parseInt(fid.trim()))
+      .filter((fid) => !isNaN(fid));
+
+    if (fidsArray.length === 0) {
+      toast("Please enter valid FIDs separated by commas", {
+        type: "error",
+        theme: "dark",
+        autoClose: 3000,
+        position: "bottom-right",
+        pauseOnHover: true,
+      });
+      return;
+    }
+
+    try {
+      const {
+        data: { message, success, details },
+      } = await axios.post<{
+        message: string;
+        success: boolean;
+        details: any[];
+      }>("/api/follow", {
+        signerUuid,
+        fids: fidsArray,
+      });
+      toast(message, {
+        type: success ? "success" : "info",
+        theme: "dark",
+        autoClose: 3000,
+        position: "bottom-right",
+        pauseOnHover: true,
+      });
+      setFollowFids("");
     } catch (err) {
       const { message } = (err as AxiosError).response?.data as ErrorRes;
       toast(message, {
@@ -75,6 +124,16 @@ const Home = () => {
               />
             </div>
             <Button onClick={handlePublishCast} title="Cast" />
+            <div className={styles.followContainer}>
+              <input
+                type="text"
+                value={followFids}
+                onChange={(e) => setFollowFids(e.target.value)}
+                className={styles.followInput}
+                placeholder="Enter FIDs to follow (comma-separated)"
+              />
+              <Button onClick={handleFollow} title="Follow" />
+            </div>
           </>
         ) : (
           <p>Loading...</p>
